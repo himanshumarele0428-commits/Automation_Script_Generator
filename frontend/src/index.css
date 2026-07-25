@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-surface-200 dark:border-surface-800;
+  }
+
+  body {
+    @apply bg-surface-50 text-surface-900 antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .dark body {
+    @apply bg-surface-950 text-surface-100;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-surface-300 dark:bg-surface-700;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-surface-400 dark:bg-surface-600;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply tracking-tight;
+  }
+
+  /* ----------------------
+   * Animations
+   * ---------------------- */
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fade-in-left {
+    from { opacity: 0; transform: translateX(-12px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes toast-in {
+    from { transform: translateX(100%); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes toast-out {
+    from { transform: translateX(0); opacity: 1; }
+    to   { transform: translateX(100%); opacity: 0; }
+  }
+  @keyframes skeleton-pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.4; }
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0; }
+  }
+  @keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .animate-fade-in       { animation: fade-in 0.4s ease-out; }
+  .animate-fade-in-left  { animation: fade-in-left 0.35s ease-out; }
+  .animate-slide-up      { animation: slide-up 0.4s ease-out; }
+  .toast-enter           { animation: toast-in 0.3s ease-out; }
+  .toast-exit            { animation: toast-out 0.3s ease-in; }
+  .skeleton              { animation: skeleton-pulse 1.5s ease-in-out infinite; }
+  .typing-cursor::after  { content: '▋'; animation: blink 1s step-end infinite; }
+  .shimmer {
+    background: linear-gradient(90deg, transparent 0%, rgba(99,102,241,0.06) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  /* ----------------------
+   * Scrollbar hidden util
+   * ---------------------- */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer components {
+  /* ----------------------
+   * Glass surface
+   * ---------------------- */
+  .glass {
+    @apply bg-white/80 dark:bg-surface-900/80 backdrop-blur-xl;
+  }
+  .glass-card {
+    @apply bg-white/70 dark:bg-surface-900/70 backdrop-blur-xl border border-white/20 dark:border-surface-800/50 shadow-card;
+  }
+
+  /* ----------------------
+   * Input base
+   * ---------------------- */
+  .input-base {
+    @apply w-full rounded-xl border border-surface-300 dark:border-surface-700
+           bg-white dark:bg-surface-900
+           px-4 py-2.5 text-sm
+           placeholder:text-surface-400 dark:placeholder:text-surface-600
+           focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500
+           outline-none transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* ----------------------
+   * Status badges
+   * ---------------------- */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-success {
+    @apply badge bg-success-50 text-success-700 dark:bg-success-50/10 dark:text-success-500;
+  }
+  .badge-warning {
+    @apply badge bg-warning-50 text-warning-700 dark:bg-warning-50/10 dark:text-warning-500;
+  }
+  .badge-danger {
+    @apply badge bg-danger-50 text-danger-700 dark:bg-danger-50/10 dark:text-danger-500;
+  }
+  .badge-primary {
+    @apply badge bg-primary-50 text-primary-700 dark:bg-primary-50/10 dark:text-primary-400;
+  }
+
+  /* ----------------------
+   * Stats card
+   * ---------------------- */
+  .stat-card {
+    @apply bg-white dark:bg-surface-900 rounded-2xl border border-surface-200 dark:border-surface-800
+           p-5 shadow-card hover:shadow-card-hover transition-all duration-200;
+  }
+  .stat-icon {
+    @apply flex items-center justify-center w-11 h-11 rounded-xl;
+  }
+}

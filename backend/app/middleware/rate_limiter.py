@@ -1,0 +1,28 @@
+import time
+from collections import defaultdict
+from fastapi import Request, HTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
+from app.config import get_settings
+
+settings = get_settings()
+
+
+class RateLimiterMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app):
+        super().__init__(app)
+        self.requests: dict[str, list[float]] = defaultdict(list)
+
+    async def dispatch(self, request: Request, call_next):
+        client_ip = request.client.host if request.client else "unknown"
+        now = time.time()
+        window = 60
+
+        self.requests[client_ip] = [t for t in self.requests[client_ip] if now - t < window]
+
+        if len(self.requests[client_ip]) >= settings.RATE_LIMIT_PER_MINUTE:
+            raise HTTPException(status_code=429, detail="Too many requests. Please try again later.")
+
+        self.requests[client_ip].append(now)
+
+        response = await call_next(request)
+        return response
