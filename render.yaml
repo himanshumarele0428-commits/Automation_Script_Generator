@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: qa-script-generator-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./qa_automation.db
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRE_MINUTES
+        value: "60"
+      - key: ENCRYPTION_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: "https://himanshu-mareles-projects.vercel.app"
+      - key: FRONTEND_URL
+        value: "https://himanshu-mareles-projects.vercel.app"
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        value: "AI Script Generator <onboarding@resend.dev>"
