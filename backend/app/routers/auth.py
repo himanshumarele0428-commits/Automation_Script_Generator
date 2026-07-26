@@ -1,4 +1,5 @@
 import uuid
+import logging
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +11,9 @@ from app.schemas.auth import (
     ResetPasswordRequest, TokenResponse, UserResponse, UserUpdate,
 )
 from app.services.auth_service import hash_password, verify_password, create_access_token
+from app.services.email_service import send_password_reset_email
+
+logger = logging.getLogger("auth")
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -51,13 +55,18 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/forgot-password")
-async def forgot_password(request: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(User).where(User.email == request.email))
     user = result.scalar_one_or_none()
     if user:
         user.reset_token = str(uuid.uuid4())
-        user.reset_token_expires = datetime.now(timezone.utc) + timedelta(hours=1)
+        user.reset_token_expires = (datetime.now(timezone.utc) + timedelta(hours=1)).replace(tzinfo=None)
         await db.commit()
+        sent = await send_password_reset_email(request.email, user.reset_token)
+        logger.info(f"Reset email to {request.email}: {'sent' if sent else 'FAILED'}")
     return {"message": "If the email exists, a reset link has been sent"}
 
 
@@ -66,7 +75,13 @@ async def reset_password(request: ResetPasswordRequest, db: AsyncSession = Depen
     result = await db.execute(select(User).where(User.reset_token == request.token))
     user = result.scalar_one_or_none()
 
-    if not user or not user.reset_token_expires or user.reset_token_expires < datetime.now(timezone.utc):
+    if not user or not user.reset_token_expires:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    expires = user.reset_token_expires
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    if expires < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
     user.hashed_password = hash_password(request.new_password)
