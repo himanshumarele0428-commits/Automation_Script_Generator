@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import Button from '../components/ui/Button';
@@ -8,7 +8,9 @@ import { SparklesIcon, EnvelopeIcon, LockClosedIcon } from '@heroicons/react/24/
 export default function LoginPage() {
   const { login, token } = useAuth();
   const { addToast } = useToast();
-  const [email, setEmail] = useState('');
+  const location = useLocation();
+  const locationState = location.state as { email?: string } | null;
+  const [email, setEmail] = useState(locationState?.email || '');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 

@@ -1,15 +1,17 @@
 import { useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import Button from '../components/ui/Button';
-import { SparklesIcon, UserIcon, EnvelopeIcon, LockClosedIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon, UserIcon, EnvelopeIcon, LockClosedIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 export default function SignupPage() {
   const { signup, token } = useAuth();
   const { addToast } = useToast();
+  const navigate = useNavigate();
   const [form, setForm] = useState({ email: '', username: '', password: '', full_name: '' });
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   if (token) return <Navigate to="/" replace />;
 
@@ -24,7 +26,10 @@ export default function SignupPage() {
         full_name: form.full_name.trim() || undefined,
       };
       await signup(payload);
-      addToast('Account created successfully!', 'success');
+      setSuccessMessage('Account created successfully! Please log in to continue.');
+      setTimeout(() => {
+        navigate('/login', { state: { email: form.email } });
+      }, 2500);
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { detail?: string | { msg: string }[] } } };
       const detail = axiosErr?.response?.data?.detail;
@@ -41,7 +46,21 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-surface-50 dark:bg-surface-950">
+    <div className="min-h-screen flex bg-surface-50 dark:bg-surface-950 relative">
+      {/* Success Banner */}
+      {successMessage && (
+        <div className="fixed top-0 left-1/2 -translate-x-1/2 z-50 mt-6 animate-slide-down">
+          <div className="flex items-center gap-3 bg-success-50 dark:bg-success-900/30 border border-success-200 dark:border-success-700 rounded-2xl px-6 py-4 shadow-lg shadow-success-500/10 backdrop-blur-sm">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-success-100 dark:bg-success-800/50 flex items-center justify-center">
+              <CheckCircleIcon className="w-6 h-6 text-success-600 dark:text-success-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-success-700 dark:text-success-300">Success!</p>
+              <p className="text-sm text-success-600 dark:text-success-400">{successMessage}</p>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Left Brand Panel */}
       <div className="hidden lg:flex lg:w-5/12 xl:w-4/12 relative overflow-hidden bg-gradient-to-br from-primary-900 via-primary-800 to-accent-900">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_rgba(99,102,241,0.3),_transparent_50%)]" />
