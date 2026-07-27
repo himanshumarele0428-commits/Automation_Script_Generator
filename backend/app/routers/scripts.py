@@ -14,7 +14,6 @@ from app.schemas.script import (
     HistoryResponse, DashboardStats,
 )
 from app.services.script_service import generate_script, get_user_scripts, get_dashboard_stats, toggle_favorite
-from openpyxl import Workbook
 
 router = APIRouter(prefix="/api/scripts", tags=["scripts"])
 
@@ -92,6 +91,7 @@ async def export_excel(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    from openpyxl import Workbook
     result = await get_user_scripts(db, current_user.id, page=1, page_size=10000)
     scripts = result["items"]
 
