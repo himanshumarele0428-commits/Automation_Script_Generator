@@ -5,12 +5,7 @@ __pycache__
 *.pyc
 .venv
 venv
-.vscode
-frontend/src
-frontend/node_modules
-frontend/public
 backend/tests
 docker
 docs
 *.log
-*.md
