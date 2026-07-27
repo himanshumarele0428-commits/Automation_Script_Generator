@@ -35,7 +35,12 @@ engine_kwargs = {}
 if "sqlite" in settings.DATABASE_URL:
     connect_args = {"check_same_thread": False}
 else:
-    engine_kwargs = {"pool_size": 10, "max_overflow": 20}
+    engine_kwargs = {
+        "pool_size": 5,
+        "max_overflow": 10,
+        "pool_pre_ping": True,
+        "pool_recycle": 300,
+    }
 
 engine = create_async_engine(
     settings.DATABASE_URL,

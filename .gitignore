@@ -44,3 +44,5 @@ pgdata/
 *.log
 server.log
 server_err.log
+
+.vercel

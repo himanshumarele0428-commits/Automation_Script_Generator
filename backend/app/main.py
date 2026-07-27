@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -14,10 +15,20 @@ from app.middleware.rate_limiter import RateLimiterMiddleware
 
 config = get_settings()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    await seed_system_data()
+    yield
+
+
 app = FastAPI(
     title="AI Automation Script Generator",
     description="Generate automation test scripts using LLMs",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(RateLimiterMiddleware)
@@ -29,13 +40,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-async def startup():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    await seed_system_data()
 
 
 async def seed_system_data():
