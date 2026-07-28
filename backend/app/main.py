@@ -1,7 +1,8 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from app.config import get_settings
 from app.database import engine, Base
 from app.models.user import User
@@ -447,3 +448,18 @@ app.include_router(prompts.router)
 app.include_router(templates.router)
 app.include_router(settings_router.router)
 app.include_router(admin.router)
+
+STATIC_DIR = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+
+
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    if full_path.startswith("api/"):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    file_path = STATIC_DIR / full_path
+    if file_path.exists() and file_path.is_file():
+        return FileResponse(str(file_path))
+    index_path = STATIC_DIR / "index.html"
+    if index_path.exists():
+        return HTMLResponse(index_path.read_text(encoding="utf-8"))
+    return {"detail": "Not Found"}
