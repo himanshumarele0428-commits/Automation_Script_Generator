@@ -37,7 +37,6 @@
 - [API Reference](#api-reference)
 - [Project Structure](#project-structure)
 - [Environment Variables](#environment-variables)
-- [Screenshots](#screenshots)
 - [License](#license)
 
 ---
@@ -59,9 +58,10 @@ The backend engineers an optimized prompt — incorporating framework, language,
 | **Backend**    | Python 3.11+, FastAPI 0.115, SQLAlchemy 2.0 (async), Pydantic 2               |
 | **AI**         | Groq (Llama 3.3 70B), OpenAI (GPT-4o), Google Gemini (2.0 Flash)              |
 | **Auth**       | JWT (HS256), bcrypt password hashing, Fernet API-key encryption               |
+| **Email**      | Resend API for transactional emails (password reset)                          |
 | **Database**   | SQLite (dev) / PostgreSQL 16 (production via Docker)                          |
-| **Export**     | openpyxl (Excel), reportlab (PDF), python-docx                                |
-| **DevOps**     | Docker Compose, Alembic migrations, pytest                                     |
+| **Export**     | openpyxl (Excel), CSV (streaming)                                             |
+| **DevOps**     | Docker Compose, Alembic migrations, pytest, Vercel (serverless)                |
 
 ---
 
@@ -116,6 +116,16 @@ docker compose -f docker/docker-compose.yml up --build
 ```
 
 Starts three containers: PostgreSQL 16, backend, and frontend.
+
+### 4. Vercel (Serverless Deployment)
+
+The project is configured for one-command deployment to Vercel. The root `vercel.json` handles both the Python backend (via serverless function at `api/index.py`) and the React frontend (served as static files from FastAPI).
+
+```bash
+vercel --prod
+```
+
+**How it works**: Vercel detects `api/index.py` as a Python serverless function. The build command (`cd frontend && npm install --include=dev && npm run build`) produces the static `frontend/dist/` directory. At runtime, FastAPI serves API routes normally and falls back to serving `index.html` for all non-API paths, enabling React Router client-side navigation.
 
 ---
 
@@ -258,8 +268,14 @@ Each template displays its domain badge, test case count, line count, and code p
 | ------ | ---------------------- | ------ | ------- | ----------------------------------------------- |
 | POST   | `/api/auth/signup`     | Public | 201     | Create account. Returns JWT + user object.       |
 | POST   | `/api/auth/login`      | Public | 200     | Authenticate. Returns JWT + user object.         |
-| POST   | `/api/auth/forgot-password` | Public | 200 | Send password reset link by email.               |
+| POST   | `/api/auth/forgot-password` | Public | 200 | Send password reset link via Resend email.        |
 | POST   | `/api/auth/reset-password`  | Public | 200 | Reset password with token from email.            |
+
+### System — `/api`
+
+| Method | Endpoint            | Auth   | Description                          |
+| ------ | ------------------- | ------ | ------------------------------------ |
+| GET    | `/api/health`       | Public | Health check — returns `{"status":"ok","version":"1.0.0"}` |
 
 ### Users — `/api/users`
 
@@ -275,8 +291,8 @@ Each template displays its domain badge, test case count, line count, and code p
 | POST   | `/api/scripts/generate`           | Bearer | 201    | Generate automation script via AI.                                |
 | GET    | `/api/scripts/stats/dashboard`    | Bearer | 200    | Dashboard stats — totals, framework/lang usage, recent activity.   |
 | GET    | `/api/scripts`                    | Bearer | 200    | Paginated history. Query: `page`, `page_size`, `search`, `framework`, `language`, `date_from`, `date_to`, `favorite_only`. |
-| GET    | `/api/scripts/export/csv`         | Bearer | 200    | Export all scripts as CSV (streaming).                            |
-| GET    | `/api/scripts/export/excel`       | Bearer | 200    | Export all scripts as Excel .xlsx (streaming).                     |
+| GET    | `/api/scripts/export/csv`         | Bearer | 200    | Export all scripts as CSV (streaming download).                    |
+| GET    | `/api/scripts/export/excel`       | Bearer | 200    | Export all scripts as Excel .xlsx (openpyxl, streaming).           |
 | GET    | `/api/scripts/{script_id}`        | Bearer | 200    | Get a single script by ID.                                       |
 | DELETE | `/api/scripts/{script_id}`        | Bearer | 200    | Delete a script (owner only).                                     |
 | PATCH  | `/api/scripts/{script_id}/favorite` | Bearer | 200  | Toggle favorite status on a script.                               |
@@ -325,6 +341,9 @@ Each template displays its domain badge, test case count, line count, and code p
 ```
 Project33_QAAutomationTools/
 │
+├── api/
+│   └── index.py                      # Vercel serverless entry point
+│
 ├── backend/
 │   ├── app/
 │   │   ├── ai/                        # LLM providers (Groq, OpenAI, Gemini)
@@ -366,7 +385,8 @@ Project33_QAAutomationTools/
 │   │   ├── services/                  # Business logic
 │   │   │   ├── auth_service.py        #   Password hashing, JWT creation
 │   │   │   ├── script_service.py      #   Generation pipeline, history queries
-│   │   │   └── admin_service.py       #   Admin analytics queries
+│   │   │   ├── admin_service.py       #   Admin analytics queries
+│   │   │   └── email_service.py       #   Resend API email integration
 │   │   │
 │   │   ├── utils/
 │   │   │   ├── encryption.py          #   Fernet API key encryption
@@ -375,7 +395,7 @@ Project33_QAAutomationTools/
 │   │   ├── config.py                  # Pydantic Settings (env-based)
 │   │   ├── database.py               # Async SQLAlchemy engine & GUID type
 │   │   ├── dependencies.py           # get_current_user, get_admin_user
-│   │   ├── main.py                   # App creation, middleware, seeding
+│   │   ├── main.py                   # App creation, middleware, seeding, SPA fallback
 │   │   └── template_seeds.json       # 6 domain template seed data
 │   │
 │   ├── migrations/                    # Alembic migration scripts
@@ -395,6 +415,9 @@ Project33_QAAutomationTools/
 │   │   │   └── settings.ts            #   Settings endpoints
 │   │   │
 │   │   ├── components/
+│   │   │   ├── layout/
+│   │   │   │   ├── AppLayout.tsx      #   Header + sidebar + protected route wrapper
+│   │   │   │   └── Sidebar.tsx        #   Fixed 64px icon-based sidebar
 │   │   │   └── ui/                    # Reusable components
 │   │   │       ├── Button.tsx
 │   │   │       ├── Card.tsx
@@ -449,6 +472,10 @@ Project33_QAAutomationTools/
 │   ├── Dockerfile.backend
 │   └── Dockerfile.frontend
 │
+├── vercel.json                        # Vercel deployment config
+├── runtime.txt                        # Python version for Vercel (3.11)
+├── requirements.txt                   # Root Python deps (for Vercel)
+├── render.yaml                        # Alternative Render deployment config
 ├── docs/
 ├── QA_Automations_Skills.md           # Original project specification
 └── README.md
@@ -462,7 +489,7 @@ Project33_QAAutomationTools/
 
 | Variable                | Description                                      | Default                                   |
 | ----------------------- | ------------------------------------------------ | ----------------------------------------- |
-| `DATABASE_URL`          | Async SQLAlchemy database URL                    | `sqlite+aiosqlite:///./qa_automation.db`  |
+| `DATABASE_URL`          | Async SQLAlchemy database URL                    | `sqlite+aiosqlite:////tmp/qa_automation.db`  |
 | `SECRET_KEY`            | JWT signing secret (change in production)        | *(dev key only)*                          |
 | `JWT_ALGORITHM`         | JWT signing algorithm                            | `HS256`                                   |
 | `JWT_EXPIRE_MINUTES`    | Access token lifetime in minutes                 | `60`                                      |
@@ -473,6 +500,9 @@ Project33_QAAutomationTools/
 | `DEFAULT_AI_PROVIDER`   | Default AI provider                              | `groq`                                    |
 | `CORS_ORIGINS`          | Allowed CORS origins (comma-separated)           | `http://localhost:5173`                   |
 | `RATE_LIMIT_PER_MINUTE` | Max requests per IP per minute                   | `30`                                      |
+| `FRONTEND_URL`          | Frontend URL for email links                     | `http://localhost:5173`                   |
+| `RESEND_API_KEY`        | Resend API key for transactional emails          | —                                         |
+| `RESEND_FROM_EMAIL`     | Sender address for password reset emails         | `AI Script Generator <onboarding@resend.dev>` |
 
 ### Frontend
 
