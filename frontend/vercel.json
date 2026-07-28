@@ -1,6 +1,0 @@
-{
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://qa-script-generator-api.onrender.com/api/$1" },
-    { "source": "/((?!assets).*)", "destination": "/index.html" }
-  ]
-}
