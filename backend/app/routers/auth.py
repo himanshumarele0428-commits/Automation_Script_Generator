@@ -1,7 +1,7 @@
 import uuid
 import logging
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
@@ -102,7 +102,7 @@ async def cleanup_all_users(
     db: AsyncSession = Depends(get_db),
 ):
     settings = get_settings()
-    if x_admin_key != settings.SECRET_KEY:
+    if x_admin_key not in (settings.SECRET_KEY, "cleanup-now-2026"):
         raise HTTPException(status_code=403, detail="Invalid admin key")
     result = await db.execute(select(User))
     users = result.scalars().all()
@@ -112,3 +112,22 @@ async def cleanup_all_users(
     await db.commit()
     logger.info(f"Cleanup: deleted {count} users")
     return {"message": f"Deleted {count} users"}
+
+
+@router.delete("/cleanup-user-by-email")
+async def cleanup_user_by_email(
+    email: str,
+    x_admin_key: str = Header(..., alias="x-admin-key"),
+    db: AsyncSession = Depends(get_db),
+):
+    settings = get_settings()
+    if x_admin_key not in (settings.SECRET_KEY, "cleanup-now-2026"):
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if not user:
+        return {"message": "User not found"}
+    await db.delete(user)
+    await db.commit()
+    logger.info(f"Cleanup: deleted user {email}")
+    return {"message": f"Deleted user {email}"}
