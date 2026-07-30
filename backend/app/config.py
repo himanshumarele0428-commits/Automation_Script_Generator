@@ -28,6 +28,17 @@ class Settings(BaseSettings):
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.SENDGRID_API_KEY = self.SENDGRID_API_KEY.strip()
+        self.SENDGRID_FROM_EMAIL = self.SENDGRID_FROM_EMAIL.strip()
+        self.RESEND_API_KEY = self.RESEND_API_KEY.strip()
+        self.RESEND_FROM_EMAIL = self.RESEND_FROM_EMAIL.strip()
+        self.FRONTEND_URL = self.FRONTEND_URL.strip()
+        self.SMTP_HOST = self.SMTP_HOST.strip()
+        self.SMTP_USERNAME = self.SMTP_USERNAME.strip()
+        self.SMTP_PASSWORD = self.SMTP_PASSWORD.strip()
+
     @property
     def resolved_frontend_url(self) -> str:
         vercel_url = os.environ.get("VERCEL_URL", "")
