@@ -1,10 +1,46 @@
 import httpx
 import logging
+import smtplib
+import asyncio
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from app.config import get_settings
 
 logger = logging.getLogger("email_service")
 settings = get_settings()
+
+
+async def send_email_via_smtp(to_email: str, subject: str, html_body: str) -> tuple:
+    if not all([settings.SMTP_HOST, settings.SMTP_USERNAME, settings.SMTP_PASSWORD]):
+        return False, "SMTP not fully configured (host, username, password required)"
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = settings.SMTP_FROM_EMAIL or settings.SMTP_USERNAME
+        msg["To"] = to_email
+        msg.attach(MIMEText(html_body, "html"))
+
+        def _send():
+            if settings.SMTP_USE_TLS:
+                server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15)
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+            else:
+                server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15)
+            server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
+            server.sendmail(msg["From"], [to_email], msg.as_string())
+            server.quit()
+
+        await asyncio.to_thread(_send)
+        logger.info(f"Email sent to {to_email} via SMTP ({settings.SMTP_HOST})")
+        return True, ""
+    except Exception as e:
+        error_msg = f"SMTP send failed: {type(e).__name__}: {e}"
+        logger.error(error_msg)
+        return False, error_msg
 
 
 async def send_email_via_sendgrid(to_email: str, subject: str, html_body: str) -> tuple:
@@ -79,15 +115,26 @@ def _parse_email(from_str: str) -> dict:
 
 
 async def send_email(to_email: str, subject: str, html_body: str) -> tuple:
+    providers = []
+    if settings.SMTP_HOST and settings.SMTP_USERNAME:
+        providers.append(("SMTP", send_email_via_smtp))
     if settings.SENDGRID_API_KEY:
-        return await send_email_via_sendgrid(to_email, subject, html_body)
-
+        providers.append(("SendGrid", send_email_via_sendgrid))
     if settings.RESEND_API_KEY:
-        return await send_email_via_resend(to_email, subject, html_body)
+        providers.append(("Resend", send_email_via_resend))
 
-    msg = "No email provider configured — set SENDGRID_API_KEY or RESEND_API_KEY"
-    logger.warning(msg)
-    return False, msg
+    if not providers:
+        msg = "No email provider configured — set SMTP_HOST+SMTP_USERNAME, SENDGRID_API_KEY, or RESEND_API_KEY"
+        logger.warning(msg)
+        return False, msg
+
+    for name, func in providers:
+        sent, err = await func(to_email, subject, html_body)
+        if sent:
+            return True, ""
+        logger.warning(f"{name} failed: {err}")
+
+    return False, f"All email providers failed"
 
 
 async def send_password_reset_email(to_email: str, reset_token: str, frontend_url: str | None = None) -> tuple[bool, str]:
@@ -138,3 +185,14 @@ async def send_password_reset_email(to_email: str, reset_token: str, frontend_ur
 </html>
 """
     return await send_email(to_email, subject, html_body)
+
+
+async def get_active_provider_info() -> dict:
+    info = {"providers_configured": [], "frontend_url": settings.resolved_frontend_url}
+    if settings.SMTP_HOST and settings.SMTP_USERNAME:
+        info["providers_configured"].append({"name": "SMTP", "host": settings.SMTP_HOST, "from": settings.SMTP_FROM_EMAIL or settings.SMTP_USERNAME})
+    if settings.SENDGRID_API_KEY:
+        info["providers_configured"].append({"name": "SendGrid", "from": settings.SENDGRID_FROM_EMAIL})
+    if settings.RESEND_API_KEY:
+        info["providers_configured"].append({"name": "Resend", "from": settings.RESEND_FROM_EMAIL})
+    return info

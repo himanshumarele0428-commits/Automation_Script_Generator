@@ -8,11 +8,11 @@ from app.database import get_db
 from app.models.user import User
 from app.schemas.auth import (
     SignupRequest, LoginRequest, ForgotPasswordRequest,
-    ResetPasswordRequest, TokenResponse, UserResponse, UserUpdate,
+    ResetPasswordRequest, TestEmailRequest, TokenResponse, UserResponse, UserUpdate,
 )
 from app.config import get_settings
 from app.services.auth_service import hash_password, verify_password, create_access_token
-from app.services.email_service import send_password_reset_email
+from app.services.email_service import send_password_reset_email, get_active_provider_info, send_email
 
 logger = logging.getLogger("auth")
 
@@ -94,6 +94,27 @@ async def reset_password(request: ResetPasswordRequest, db: AsyncSession = Depen
     user.reset_token_expires = None
     await db.commit()
     return {"message": "Password reset successful"}
+
+
+@router.get("/email-status")
+async def email_status():
+    return await get_active_provider_info()
+
+
+@router.post("/test-email")
+async def test_email(request: TestEmailRequest):
+    frontend_url = request.origin or get_settings().resolved_frontend_url
+    subject = "Test Email - AI Script Generator"
+    html_body = f"""\
+<html><body style="font-family: Arial, sans-serif; padding: 20px;">
+  <h2 style="color: #312e81;">Test Email from AI Script Generator</h2>
+  <p>This is a test email to verify that email sending is working correctly.</p>
+  <p style="color: #64748b;">Frontend URL: {frontend_url}</p>
+</body></html>"""
+    sent, error_msg = await send_email(request.email, subject, html_body)
+    if not sent:
+        raise HTTPException(status_code=500, detail=f"Email send failed: {error_msg}")
+    return {"message": f"Test email sent to {request.email}", "provider_info": await get_active_provider_info()}
 
 
 @router.delete("/cleanup-users")
