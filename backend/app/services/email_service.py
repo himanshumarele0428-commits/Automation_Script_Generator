@@ -13,7 +13,6 @@ async def send_email(to_email: str, subject: str, html_body: str) -> bool:
         return False
 
     try:
-        logger.info(f"Sending email to {to_email} via Resend API (key: {settings.RESEND_API_KEY[:8]}...)")
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.post(
                 "https://api.resend.com/emails",
@@ -28,11 +27,13 @@ async def send_email(to_email: str, subject: str, html_body: str) -> bool:
                     "Content-Type": "application/json",
                 },
             )
-            logger.info(f"Resend API response: {resp.status_code} - {resp.text[:500]}")
+            body = resp.text[:300]
+            print(f"[RESEND] status={resp.status_code} body={body}", flush=True)
             if resp.status_code != 200:
                 logger.error(f"Resend API error {resp.status_code}: {resp.text}")
             return resp.status_code == 200
     except Exception as e:
+        print(f"[RESEND] exception: {type(e).__name__}: {e}", flush=True)
         logger.error(f"Failed to send email: {type(e).__name__}: {e}")
         return False
 
