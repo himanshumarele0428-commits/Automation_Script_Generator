@@ -6,14 +6,41 @@ from app.config import get_settings
 logger = logging.getLogger("email_service")
 settings = get_settings()
 
-RESEND_VERIFIED_EMAIL = "testhim0105@gmail.com"
+
+async def send_email_via_sendgrid(to_email: str, subject: str, html_body: str) -> tuple:
+    if not settings.SENDGRID_API_KEY:
+        return False, "SENDGRID_API_KEY not configured"
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                "https://api.sendgrid.com/v3/mail/send",
+                json={
+                    "personalizations": [{"to": [{"email": to_email}]}],
+                    "from": _parse_email(settings.SENDGRID_FROM_EMAIL),
+                    "subject": subject,
+                    "content": [{"type": "text/html", "value": html_body}],
+                },
+                headers={
+                    "Authorization": f"Bearer {settings.SENDGRID_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+            )
+            if resp.status_code in (200, 202):
+                logger.info(f"Email sent to {to_email} via SendGrid")
+                return True, ""
+            error_msg = f"SendGrid API error {resp.status_code}: {resp.text[:300]}"
+            logger.error(error_msg)
+            return False, error_msg
+    except Exception as e:
+        error_msg = f"SendGrid send failed: {type(e).__name__}: {e}"
+        logger.error(error_msg)
+        return False, error_msg
 
 
-async def send_email(to_email: str, subject: str, html_body: str) -> tuple:  # (bool, str)
+async def send_email_via_resend(to_email: str, subject: str, html_body: str) -> tuple:
     if not settings.RESEND_API_KEY:
-        msg = "RESEND_API_KEY not configured"
-        logger.warning(msg)
-        return False, msg
+        return False, "RESEND_API_KEY not configured"
 
     try:
         async with httpx.AsyncClient(timeout=15) as client:
@@ -32,19 +59,39 @@ async def send_email(to_email: str, subject: str, html_body: str) -> tuple:  # (
             )
             if resp.status_code == 200:
                 body = resp.json()
-                logger.info(f"Email sent to {to_email}: id={body.get('id', 'N/A')}")
+                logger.info(f"Email sent to {to_email} via Resend: id={body.get('id', 'N/A')}")
                 return True, ""
             error_msg = f"Resend API error {resp.status_code}: {resp.text[:300]}"
             logger.error(error_msg)
             return False, error_msg
     except Exception as e:
-        error_msg = f"Failed to send email: {type(e).__name__}: {e}"
+        error_msg = f"Resend send failed: {type(e).__name__}: {e}"
         logger.error(error_msg)
         return False, error_msg
 
 
+def _parse_email(from_str: str) -> dict:
+    import re
+    match = re.match(r'^(.+?)\s*<(.+?)>$', from_str.strip())
+    if match:
+        return {"name": match.group(1).strip(), "email": match.group(2).strip()}
+    return {"email": from_str.strip()}
+
+
+async def send_email(to_email: str, subject: str, html_body: str) -> tuple:
+    if settings.SENDGRID_API_KEY:
+        return await send_email_via_sendgrid(to_email, subject, html_body)
+
+    if settings.RESEND_API_KEY:
+        return await send_email_via_resend(to_email, subject, html_body)
+
+    msg = "No email provider configured — set SENDGRID_API_KEY or RESEND_API_KEY"
+    logger.warning(msg)
+    return False, msg
+
+
 async def send_password_reset_email(to_email: str, reset_token: str, frontend_url: str | None = None) -> tuple[bool, str]:
-    origin = frontend_url or settings.FRONTEND_URL
+    origin = frontend_url or settings.resolved_frontend_url
     reset_link = f"{origin}/reset-password?token={reset_token}"
     subject = "Reset Your Password - AI Script Generator"
     year = datetime.now().year

@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:5173,https://localhost:5173,https://qa-script-generator.vercel.app"
     RATE_LIMIT_PER_MINUTE: int = 30
     FRONTEND_URL: str = "http://localhost:5173"
+    SENDGRID_API_KEY: str = ""
+    SENDGRID_FROM_EMAIL: str = "AI Script Generator <noreply@qaautomation.app>"
     RESEND_API_KEY: str = ""
     RESEND_FROM_EMAIL: str = "AI Script Generator <onboarding@resend.dev>"
 
