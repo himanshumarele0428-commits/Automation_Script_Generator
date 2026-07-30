@@ -35,8 +35,9 @@ async def send_email(to_email: str, subject: str, html_body: str) -> bool:
         return False
 
 
-async def send_password_reset_email(to_email: str, reset_token: str) -> bool:
-    reset_link = f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
+async def send_password_reset_email(to_email: str, reset_token: str, frontend_url: str | None = None) -> bool:
+    origin = frontend_url or settings.FRONTEND_URL
+    reset_link = f"{origin}/reset-password?token={reset_token}"
     subject = "Reset Your Password - AI Script Generator"
     year = datetime.now().year
     html_body = f"""\

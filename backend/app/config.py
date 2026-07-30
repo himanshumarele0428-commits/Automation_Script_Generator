@@ -11,9 +11,10 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
     DEFAULT_AI_PROVIDER: str = "groq"
-    CORS_ORIGINS: str = "http://localhost:5173"
+    CORS_ORIGINS: str = "http://localhost:5173,https://localhost:5173"
     RATE_LIMIT_PER_MINUTE: int = 30
     FRONTEND_URL: str = "http://localhost:5173"
+    VERCEL_URL: str = ""
     RESEND_API_KEY: str = ""
     RESEND_FROM_EMAIL: str = "AI Script Generator <onboarding@resend.dev>"
 

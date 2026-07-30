@@ -17,6 +17,7 @@ class LoginRequest(BaseModel):
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
+    origin: str | None = None
 
 
 class ResetPasswordRequest(BaseModel):
