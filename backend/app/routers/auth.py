@@ -102,7 +102,7 @@ async def cleanup_all_users(
     db: AsyncSession = Depends(get_db),
 ):
     settings = get_settings()
-    if x_admin_key not in (settings.SECRET_KEY, "cleanup-now-2026"):
+    if x_admin_key != settings.SECRET_KEY:
         raise HTTPException(status_code=403, detail="Invalid admin key")
     result = await db.execute(select(User))
     users = result.scalars().all()
@@ -121,7 +121,7 @@ async def cleanup_user_by_email(
     db: AsyncSession = Depends(get_db),
 ):
     settings = get_settings()
-    if x_admin_key not in (settings.SECRET_KEY, "cleanup-now-2026"):
+    if x_admin_key != settings.SECRET_KEY:
         raise HTTPException(status_code=403, detail="Invalid admin key")
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
