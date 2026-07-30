@@ -67,9 +67,9 @@ async def forgot_password(
         user.reset_token = str(uuid.uuid4())
         user.reset_token_expires = datetime.now(timezone.utc) + timedelta(hours=1)
         await db.commit()
-        sent = await send_password_reset_email(request.email, user.reset_token, frontend_url=str(frontend_url))
+        sent, error_msg = await send_password_reset_email(request.email, user.reset_token, frontend_url=str(frontend_url))
         if not sent:
-            logger.error(f"Failed to send reset email to {request.email}")
+            logger.error(f"Failed to send reset email to {request.email}: {error_msg}")
         else:
             logger.info(f"Reset email sent to {request.email}")
     return {"message": "If the email exists, a reset link has been sent"}

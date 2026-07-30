@@ -6,11 +6,14 @@ from app.config import get_settings
 logger = logging.getLogger("email_service")
 settings = get_settings()
 
+RESEND_VERIFIED_EMAIL = "testhim0105@gmail.com"
 
-async def send_email(to_email: str, subject: str, html_body: str) -> bool:
+
+async def send_email(to_email: str, subject: str, html_body: str) -> tuple:  # (bool, str)
     if not settings.RESEND_API_KEY:
-        logger.warning("RESEND_API_KEY not configured")
-        return False
+        msg = "RESEND_API_KEY not configured"
+        logger.warning(msg)
+        return False, msg
 
     try:
         async with httpx.AsyncClient(timeout=15) as client:
@@ -27,18 +30,20 @@ async def send_email(to_email: str, subject: str, html_body: str) -> bool:
                     "Content-Type": "application/json",
                 },
             )
-            body = resp.text[:300]
-            print(f"[RESEND] status={resp.status_code} body={body}", flush=True)
-            if resp.status_code != 200:
-                logger.error(f"Resend API error {resp.status_code}: {resp.text}")
-            return resp.status_code == 200
+            if resp.status_code == 200:
+                body = resp.json()
+                logger.info(f"Email sent to {to_email}: id={body.get('id', 'N/A')}")
+                return True, ""
+            error_msg = f"Resend API error {resp.status_code}: {resp.text[:300]}"
+            logger.error(error_msg)
+            return False, error_msg
     except Exception as e:
-        print(f"[RESEND] exception: {type(e).__name__}: {e}", flush=True)
-        logger.error(f"Failed to send email: {type(e).__name__}: {e}")
-        return False
+        error_msg = f"Failed to send email: {type(e).__name__}: {e}"
+        logger.error(error_msg)
+        return False, error_msg
 
 
-async def send_password_reset_email(to_email: str, reset_token: str, frontend_url: str | None = None) -> bool:
+async def send_password_reset_email(to_email: str, reset_token: str, frontend_url: str | None = None) -> tuple[bool, str]:
     origin = frontend_url or settings.FRONTEND_URL
     reset_link = f"{origin}/reset-password?token={reset_token}"
     subject = "Reset Your Password - AI Script Generator"
