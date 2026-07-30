@@ -60,7 +60,7 @@ async def forgot_password(
     request: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    frontend_url = request.origin or get_settings().FRONTEND_URL
+    frontend_url = request.origin or get_settings().resolved_frontend_url
     result = await db.execute(select(User).where(User.email == request.email))
     user = result.scalar_one_or_none()
     if user:

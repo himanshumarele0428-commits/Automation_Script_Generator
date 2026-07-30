@@ -36,7 +36,7 @@ app.add_middleware(RateLimiterMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=config.CORS_ORIGINS.split(","),
+    allow_origins=config.resolved_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
